@@ -1,0 +1,8 @@
+obj_dir/
+*.vcd
+*.vvp
+*.gtkw
+cpu_tb
+out/
+__pycache__/
+scripts/__pycache__/

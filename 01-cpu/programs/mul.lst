@@ -1,0 +1,22 @@
+ADDR  BYTES        SOURCE
+----  -----------  ----------------------------------
+0000  05 00        LDI 0
+0002  02 21        STA result
+0004  05 06        LDI 6
+0006  02 20        STA cnt
+0008  01 21        LDA result
+000a  03 22        ADD seven
+000c  02 21        STA result
+000e  01 20        LDA cnt
+0010  04 23        SUB one
+0012  02 20        STA cnt
+0014  07 18        JZ  done
+0016  06 08        JMP loop
+0018  01 21        LDA result
+001a  08           OUT
+001b  0f           HLT
+0020               ORG 0x20
+0020  00           DB 0
+0021  00           DB 0
+0022  07           DB 7
+0023  01           DB 1

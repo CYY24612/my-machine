@@ -1,0 +1,16 @@
+# 编译/仿真产物
+obj_dir/
+*.vcd
+*.vvp
+*.fs
+*.bin
+impl/
+*.gtkw
+
+# Python
+__pycache__/
+*.pyc
+
+# 系统
+Thumbs.db
+desktop.ini

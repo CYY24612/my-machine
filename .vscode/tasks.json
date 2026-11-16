@@ -1,0 +1,28 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "① 同步并运行（麒麟）",
+      "type": "shell",
+      "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"${workspaceFolder}\\01-cpu\\deploy.ps1\"",
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": [],
+      "detail": "tar 打包 → ssh 传到麒麟 → 跑 run.sh（参考模型 + RTL 仿真）"
+    },
+    {
+      "label": "② 只跑本地参考模型（Python）",
+      "type": "shell",
+      "command": "python cpu_ref.py programs/add.hex",
+      "options": { "cwd": "${workspaceFolder}\\01-cpu" },
+      "problemMatcher": [],
+      "detail": "不需要麒麟、不需要 Verilator，改完 hex 先在这里验证语义"
+    },
+    {
+      "label": "③ 把波形拷回来",
+      "type": "shell",
+      "command": "scp kylin:~/work/01-cpu/cpu_tb.vcd \"${workspaceFolder}\\01-cpu\\cpu_tb.vcd\"",
+      "problemMatcher": [],
+      "detail": "需要先在麒麟上装 gtkwave 并生成 vcd"
+    }
+  ]
+}
