@@ -47,6 +47,7 @@
 /* USER CODE BEGIN PV */
 static const uint8_t kDummy[8] = { 0xAA, 0x55, 0x06, 0x81, 0x01, 0x0E, 0x03, 0x00 };
 volatile uint8_t g_tick_100ms= 0;
+uint8_t g_rx2 = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -91,8 +92,11 @@ int main(void)
   MX_GPIO_Init();
   MX_TIM2_Init();
   MX_USART1_UART_Init();
+  MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
   HAL_TIM_Base_Start_IT(&htim2);
+  HAL_UART_Receive_IT(&huart2, &g_rx2, 1);
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -154,6 +158,18 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
     if (htim->Instance == TIM2) {
         g_tick_100ms = 1;
+    }
+}
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+    if (huart->Instance == USART2) {
+      if (g_rx2 == 'H') {
+          HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
+      } else if (g_rx2 == 'L') {
+          HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
+      }
+      HAL_UART_Receive_IT(&huart2, &g_rx2, 1);
     }
 }
 /* USER CODE END 4 */

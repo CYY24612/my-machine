@@ -17,6 +17,11 @@ IO_PORT "led[4]" PULL_MODE=UP DRIVE=8;
 IO_LOC  "led[5]" 16;
 IO_PORT "led[5]" PULL_MODE=UP DRIVE=8;
 
-// 板载 USB-UART（官方 uart 例程确认 pin 17 = TX）
-IO_LOC  "uart_tx" 17;
-IO_PORT "uart_tx" IO_TYPE=LVCMOS33 PULL_MODE=UP DRIVE=8;
+// 板载 USB-UART（官方 uart 例程确认 pin 17 = TX）-> 电脑
+IO_LOC  "uart_dbg" 17;
+IO_PORT "uart_dbg" IO_TYPE=LVCMOS33 PULL_MODE=UP DRIVE=8;
+
+// 排针输出 -> STM32 PA10（RX）
+// 选 26：官方 7 个例程都没占用 25~30 这组
+IO_LOC  "uart_car" 26;
+IO_PORT "uart_car" IO_TYPE=LVCMOS33 PULL_MODE=UP DRIVE=8;

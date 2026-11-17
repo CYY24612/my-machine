@@ -1,24 +1,26 @@
-// top.v —— 板级顶层：把 cpu.v + uart_tx.v 包起来，不改 cpu.v 一个字
+// top.v —— 板级顶层：CPU + 两路 UART
 //
-// 目标：hello 程序通过 OUT 指令驱动 UART，在串口上打印 "Hi"
-// 板：Tang Nano 9K（GW1NR-9C，27MHz）
+// 目标（③ 的第一步）：我的 CPU 向 STM32 发字符，点亮 STM32 的灯
 //
-// 关键设计：
-//   out_ready = ~tx_busy  ← 握手。CPU 一个 OUT 只花 2 拍，
-//                            而 UART 发一个字节要 2340 拍，不握手会丢字节。
+// 双路 UART 设计：
+//   uart_tx_A -> pin 17 -> 板载 USB-UART -> 电脑（调试观察）
+//   uart_tx_B -> pin 26 -> 排针 -> STM32 PA10（控制）
+//   两路发同样的字节。
+//
+//   好处：COM14 有输出但 STM32 没反应 => 问题在接线/STM32 侧，不是 CPU。
 `timescale 1ns / 1ps
 
 module top (
     input  wire       sys_clk,     // 27 MHz，pin 52
     input  wire       btn_rst_n,   // 按键，pin 4，按下为 0
     output wire [5:0] led,         // pin 10/11/13/14/15/16（低电平点亮）
-    output wire       uart_tx      // pin 17 -> 板载 USB-UART
+    output wire       uart_dbg,    // pin 17 -> 板载 USB-UART -> 电脑
+    output wire       uart_car     // pin 26 -> 排针 -> STM32
 );
 
-    localparam integer CLKS_PER_BIT = 234;   // 27MHz / 115200 = 234.375 -> 234
+    localparam integer CLKS_PER_BIT = 234;   // 27MHz / 115200
 
-    // ---- 复位：按键低有效，cpu 的 rst 是高有效 ----
-    // 上电先保持 2 拍复位，避免寄存器初值不确定
+    // ---- 复位 ----
     reg [1:0] rst_sync = 2'b11;
     always @(posedge sys_clk)
         rst_sync <= {rst_sync[0], ~btn_rst_n};
@@ -28,16 +30,19 @@ module top (
     wire [7:0] out_data, dbg_pc, dbg_a, dbg_ir;
     wire       out_valid, halted, in_ack, dbg_z;
 
-    // ---- UART ----
-    wire tx, tx_busy;
-    wire out_ready = ~tx_busy;      // UART 空闲才能发
+    // ---- 两路 UART ----
+    wire tx_a, busy_a;
+    wire tx_b, busy_b;
+
+    // 两路都空闲才能发下一个字节
+    wire out_ready = ~busy_a & ~busy_b;
 
     cpu u_cpu (
         .clk       (sys_clk),
         .rst       (cpu_rst),
         .out_ready (out_ready),
-        .in_data   (8'h00),         // 本轮不做接收，固定 0
-        .in_valid  (1'b0),          // 永远没有输入数据
+        .in_data   (8'h00),
+        .in_valid  (1'b0),
         .out_data  (out_data),
         .out_valid (out_valid),
         .in_ack    (in_ack),
@@ -48,20 +53,29 @@ module top (
         .dbg_z     (dbg_z)
     );
 
-    uart_tx #(.CLKS_PER_BIT(CLKS_PER_BIT)) u_tx (
+    uart_tx #(.CLKS_PER_BIT(CLKS_PER_BIT)) u_tx_dbg (
         .clk      (sys_clk),
         .rst      (cpu_rst),
         .tx_start (out_valid),
         .tx_data  (out_data),
-        .tx       (tx),
-        .tx_busy  (tx_busy)
+        .tx       (tx_a),
+        .tx_busy  (busy_a)
     );
 
-    assign uart_tx = tx;
+    uart_tx #(.CLKS_PER_BIT(CLKS_PER_BIT)) u_tx_car (
+        .clk      (sys_clk),
+        .rst      (cpu_rst),
+        .tx_start (out_valid),
+        .tx_data  (out_data),
+        .tx       (tx_b),
+        .tx_busy  (busy_b)
+    );
 
-    // ---- LED 显示累加器 A 的低 6 位（低电平点亮）----
-    // hello 跑完 A = 0x0A = 10 -> led[5:0] = 001010
-    // 这是一个诊断值：LED 显示 10 说明 CPU 跑完了，问题只在 UART
+    assign uart_dbg = tx_a;
+    assign uart_car = tx_b;
+
+    // ---- LED：显示 A 的低 6 位（诊断）----
+    // 程序是死循环，A 恒为 72 = 0x48 -> led[5:0] = 001000（只有 led[3] 输出 1 = 灭）
     assign led = dbg_a[5:0];
 
 endmodule
