@@ -11,6 +11,7 @@
 module cpu (
     input  wire       clk,
     input  wire       rst,
+    input  wire       out_ready,  // OUT 握手：1 = 外设空闲，可接收
     // 对外输出
     output reg  [7:0] out_data,   // OUT 指令的数据
     output reg        out_valid,  // OUT 时拉高一拍
@@ -75,7 +76,7 @@ module cpu (
                 S_EXEC: begin
                     case (ir)
                         OP_NOP:  state <= S_FETCH;
-                        OP_OUT:  begin
+                        OP_OUT:  if (out_ready) begin   // 外设忙就停在这拍等
                                      out_data  <= a;
                                      out_valid <= 1'b1;
                                      state     <= S_FETCH;

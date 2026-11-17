@@ -293,3 +293,70 @@ python cpu_ref.py programs/array_sum.hex --expect 15
 | --- | --- | --- |
 | **hex 内容检查** | 出现非 `xx` / `@xxxx` 的行 | Gowin `$readmemh` 遇到注释**静默失败** |
 | **地址重叠检查** | `ORG` 回头覆盖已生成的字节 | 数据压到代码上 → 跑飞（本次实测踩到） |
+
+---
+
+## CPU 会说话了：OUT → UART（P3，2026-11-17）
+
+```
+cpu ──out_data[7:0]──▶ uart_tx ──tx──▶ 串口线
+    ──out_valid(1拍)──▶ tx_start
+    ◀──out_ready──────  ~tx_busy      ← 握手：外设忙，CPU 停在 OUT 上等
+```
+
+### 关键改动：`out_ready` 握手
+
+CPU 一个 OUT 只花 2 拍，而发一个字节要 **2340 拍**（234 拍/bit × 10 bit）。
+如果不握手，CPU 会连着 OUT 好几个字节，串口只会发出去第一个。
+
+所以 `cpu.v` 新增输入 `out_ready`：
+
+```verilog
+OP_OUT:  if (out_ready) begin      // 外设忙就停在这拍等
+             out_data  <= a;
+             out_valid <= 1'b1;
+             state     <= S_FETCH;
+         end
+```
+
+**纯计算测试不受影响**：`cpu_tb.v` 里接 `.out_ready(1'b1)`。
+
+> ⚠️ **`fpga/top.v` 必须同步改**：没有 UART 时接 `1'b1`，
+> 有 UART 时接 `~tx_busy`。否则综合报端口不匹配。
+
+### 波特率
+
+```verilog
+uart_tx #(.CLKS_PER_BIT(234)) u_tx(...)   // 27MHz / 115200 = 234.375 → 234（误差 0.16%）
+```
+
+| 时钟 | 波特率 | CLKS_PER_BIT |
+| --- | --- | ---: |
+| 27 MHz | 115200 | 234 |
+| 27 MHz | 9600 | 2812 |
+
+### 两个 testbench
+
+| testbench | 测什么 | 命令 |
+| --- | --- | --- |
+| `tb/uart_tx_tb.v` | UART 模块**单独**可用（自带解码，打印 `Hi`） | `iverilog -o u.vvp rtl/uart_tx.v tb/uart_tx_tb.v && vvp u.vvp` |
+| `tb/cpu_uart_tb.v` | **CPU 驱动** UART 打印 `Hi` | `iverilog -o c.vvp rtl/cpu.v rtl/uart_tx.v tb/cpu_uart_tb.v && vvp c.vvp` |
+
+### hello.asm
+
+```asm
+        LDI 72          ; 'H'
+        OUT
+        LDI 105         ; 'i'
+        OUT
+        LDI 10          ; 换行
+        OUT
+        HLT
+```
+
+### ⚠️ 一个教训：签入的 `.hex` 会过期
+
+本次踩坑：`array_sum.hex` 是旧的，参考模型跑出错误结果，排查了半小时。
+**现在 `run.sh` 每次都从 `.asm` 重新汇编**——`.asm` 是唯一真相，`.hex` 只是产物。
+
+> 同类问题：`.lst` 也一样。改完 `.asm` 一定要重新跑 `run.sh`。

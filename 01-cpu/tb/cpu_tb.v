@@ -12,7 +12,7 @@ module cpu_tb;
     wire       dbg_z;
 
     cpu dut (
-        .clk(clk), .rst(rst),
+        .clk(clk), .rst(rst), .out_ready(1'b1),
         .out_data(out_data), .out_valid(out_valid), .halted(halted),
         .dbg_pc(dbg_pc), .dbg_a(dbg_a), .dbg_ir(dbg_ir), .dbg_z(dbg_z)
     );

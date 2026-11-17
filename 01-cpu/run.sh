@@ -1,12 +1,31 @@
 #!/usr/bin/env bash
 # 一键回归：把每个测试程序交给「参考模型」和「RTL 仿真」各跑一遍，比对期望值。
 # 加新程序：把它加进下面的 TESTS 列表，格式 名字:期望A
+#
+# 注意：每次都从 .asm 重新汇编出 .hex。
+# 签入的 .hex 可能过期（曾因此白查半小时），.asm 才是唯一真相。
 set -uo pipefail
 cd "$(dirname "$0")"
 
 TESTS="add:8 sum10:55 mul:42 array_sum:15 array_fill:9"
 fail=0
 pass=0
+
+asm() {   # asm <名字>
+    local name="$1"
+    if [ ! -f "programs/$name.asm" ]; then
+        echo "  找不到 programs/$name.asm"; return 1
+    fi
+    if command -v python3 >/dev/null 2>&1; then
+        if ! python3 tools/asm.py "programs/$name.asm" \
+                -o "programs/$name.hex" -l "programs/$name.lst" >/dev/null; then
+            echo "  汇编失败"; return 1
+        fi
+    elif [ ! -f "programs/$name.hex" ]; then
+        echo "  既没有 python3 也没有现成的 programs/$name.hex"; return 1
+    fi
+    return 0
+}
 
 for t in $TESTS; do
     name=${t%%:*}
@@ -16,10 +35,7 @@ for t in $TESTS; do
     echo " 程序: $name    期望 A = $expect"
     echo "=============================================="
 
-    if [ ! -f "programs/$name.hex" ]; then
-        echo "  找不到 programs/$name.hex"
-        fail=$((fail+1)); continue
-    fi
+    asm "$name" || { fail=$((fail+1)); continue; }
     cp "programs/$name.hex" programs/prog.hex
 
     # ---------- 参考模型 ----------
@@ -29,6 +45,7 @@ for t in $TESTS; do
             echo "   PASS"
         else
             echo "   FAIL （参考模型自己就不对，先修它）"
+            python3 cpu_ref.py programs/prog.hex --expect "$expect" 2>&1 | tail -4 | sed 's/^/     /'
             fail=$((fail+1)); continue
         fi
     else
@@ -58,6 +75,30 @@ for t in $TESTS; do
     fi
     echo ""
 done
+
+# ---------------- CPU → UART ----------------
+echo "=============================================="
+echo " CPU → UART ：hello 程序打印 Hi"
+echo "=============================================="
+if command -v iverilog >/dev/null 2>&1; then
+    if asm hello; then
+        cp programs/hello.hex programs/prog.hex
+        if iverilog -o cpu_uart.vvp rtl/cpu.v rtl/uart_tx.v tb/cpu_uart_tb.v; then
+            uout=$(vvp cpu_uart.vvp)
+            echo "$uout" | grep -E 'PASS|FAIL' | sed 's/^/   /'
+            if echo "$uout" | grep -q 'CPU→UART PASS'; then
+                pass=$((pass+1))
+            else
+                fail=$((fail+1))
+            fi
+        else
+            echo "   编译失败"; fail=$((fail+1))
+        fi
+    else
+        fail=$((fail+1))
+    fi
+fi
+echo ""
 
 echo "=============================================="
 echo " 结果：通过 $pass 个，失败 $fail 个"

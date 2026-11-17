@@ -13,7 +13,8 @@
 #>
 param(
     [string]$Remote = 'kylin',
-    [int]$TimeoutSec = 180
+    [int]$TimeoutSec = 180,
+    [string]$Cmd = 'bash run.sh'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -81,8 +82,8 @@ if ($r.Exit -ne 0) {
 }
 
 # ---------------------------------------------------------------- 4. run
-Write-Host "[4/4] run run.sh on $Remote" -ForegroundColor Cyan
-$r = Invoke-Remote "cd ~/work/$leaf && bash run.sh"
+Write-Host "[4/4] run on $Remote : $Cmd" -ForegroundColor Cyan
+$r = Invoke-Remote "cd ~/work/$leaf && $Cmd"
 $r.Out | ForEach-Object { Write-Host $_ }
 if ($r.Err.Count -gt 0) {
     Write-Host '--- stderr ---' -ForegroundColor DarkGray
