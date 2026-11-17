@@ -12,9 +12,12 @@ module cpu (
     input  wire       clk,
     input  wire       rst,
     input  wire       out_ready,  // OUT 握手：1 = 外设空闲，可接收
+    input  wire [7:0] in_data,
+    input  wire       in_valid,
     // 对外输出
     output reg  [7:0] out_data,   // OUT 指令的数据
     output reg        out_valid,  // OUT 时拉高一拍
+    output reg        in_ack,
     output reg        halted,     // HLT 后为 1
     // 调试观察
     output wire [7:0] dbg_pc,
@@ -27,7 +30,8 @@ module cpu (
     localparam OP_NOP = 8'h00, OP_LDA = 8'h01, OP_STA = 8'h02, OP_ADD = 8'h03,
                OP_SUB = 8'h04, OP_LDI = 8'h05, OP_JMP = 8'h06, OP_JZ  = 8'h07,
                OP_OUT = 8'h08, OP_HLT = 8'h0F,
-               OP_INC = 8'h09, OP_DEC = 8'h0A, OP_LDX = 8'h0B, OP_STX = 8'h0C;
+               OP_INC = 8'h09, OP_DEC = 8'h0A, OP_LDX = 8'h0B, OP_STX = 8'h0C,
+               OP_IN = 8'h0D;
 
     // ---- 状态 ----
     localparam S_FETCH = 2'd0, S_EXEC = 2'd1, S_EXEC2 = 2'd2, S_STOP = 2'd3;
@@ -61,6 +65,7 @@ module cpu (
             state     <= S_FETCH;
             halted    <= 1'b0;
             out_valid <= 1'b0;
+            in_ack    <= 1'b0;
             out_data  <= 8'h00;
         end else if (!halted) begin
             case (state)
@@ -69,6 +74,7 @@ module cpu (
                     ir        <= mem[pc];
                     pc        <= pc + 8'd1;
                     out_valid <= 1'b0;          // OUT 只亮一拍
+                    in_ack    <= 1'b0;
                     state     <= S_EXEC;
                 end
 
@@ -93,6 +99,12 @@ module cpu (
                         OP_DEC:  begin
                                      a <= a - 8'd1;
                                      z <= ((a - 8'd1) == 8'h00);
+                                     state <= S_FETCH;
+                                 end
+                        OP_IN:  if (in_valid) begin
+                                     a <= in_data;
+                                     z <= (in_data == 8'h00);
+                                     in_ack <= 1'b1;
                                      state <= S_FETCH;
                                  end
                         default: begin              // 带操作数的指令

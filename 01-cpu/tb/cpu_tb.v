@@ -10,9 +10,11 @@ module cpu_tb;
     wire       out_valid, halted;
     wire [7:0] dbg_pc, dbg_a, dbg_ir;
     wire       dbg_z;
+    wire       in_ack;
 
     cpu dut (
         .clk(clk), .rst(rst), .out_ready(1'b1),
+        .in_data(8'h00), .in_valid(1'b0), .in_ack(in_ack),
         .out_data(out_data), .out_valid(out_valid), .halted(halted),
         .dbg_pc(dbg_pc), .dbg_a(dbg_a), .dbg_ir(dbg_ir), .dbg_z(dbg_z)
     );

@@ -360,3 +360,25 @@ uart_tx #(.CLKS_PER_BIT(234)) u_tx(...)   // 27MHz / 115200 = 234.375 → 234（
 **现在 `run.sh` 每次都从 `.asm` 重新汇编**——`.asm` 是唯一真相，`.hex` 只是产物。
 
 > 同类问题：`.lst` 也一样。改完 `.asm` 一定要重新跑 `run.sh`。
+
+### IN 指令（2026-11-17 加，第 15 条）
+
+```verilog
+IN ：如果 in_valid=1 → A = in_data，给 in_ack 脉冲，回取指
+     如果 in_valid=0 → 停在这拍等（和 OUT 的 out_ready 对称）
+```
+
+| 端口 | 方向 | 作用 |
+| --- | --- | --- |
+| `in_data[7:0]` | 输入 | 外部数据 |
+| `in_valid` | 输入 | 有数据待取 |
+| `in_ack` | 输出 | 取走了（单拍脉冲） |
+
+**编码 0x0D，2 拍 + 等待。**
+
+测试：`programs/cnt_in.asm` 读 3 个字节，第 3 个留在 A → 喂 `11 22 33` 得 `0x33`。
+
+```bash
+python cpu_ref.py programs/cnt_in.hex --input "11 22 33" --expect 51
+iverilog -o in.vvp rtl/cpu.v tb/cpu_in_tb.v && vvp in.vvp
+```

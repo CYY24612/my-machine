@@ -100,6 +100,25 @@ if command -v iverilog >/dev/null 2>&1; then
 fi
 echo ""
 
+# ---------------- IN 指令 ----------------
+echo "=============================================="
+echo " IN 指令：喂 11 22 33，A 应为 0x33"
+echo "=============================================="
+if command -v iverilog >/dev/null 2>&1; then
+    if asm cnt_in; then
+        cp programs/cnt_in.hex programs/prog.hex
+        if iverilog -o cpu_in.vvp rtl/cpu.v tb/cpu_in_tb.v; then
+            iout=$(vvp cpu_in.vvp)
+            echo "$iout" | grep -E 'IN-PASS|IN-FAIL' | sed 's/^/   /'
+            if echo "$iout" | grep -q 'IN-PASS'; then pass=$((pass+1)); else fail=$((fail+1)); fi
+        else
+            echo "   编译失败"; fail=$((fail+1))
+        fi
+    else
+        fail=$((fail+1))
+    fi
+fi
+echo ""
 echo "=============================================="
 echo " 结果：通过 $pass 个，失败 $fail 个"
 echo "=============================================="

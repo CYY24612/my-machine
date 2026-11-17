@@ -30,12 +30,13 @@ INC = 0x09
 DEC = 0x0A
 LDX = 0x0B
 STX = 0x0C
+IN  = 0x0D
 HLT = 0x0F
 
 HAS_OPERAND = {LDA, STA, ADD, SUB, LDI, JMP, JZ, LDX, STX}
 NAMES = {NOP: "NOP", LDA: "LDA", STA: "STA", ADD: "ADD", SUB: "SUB",
          LDI: "LDI", JMP: "JMP", JZ: "JZ", OUT: "OUT", HLT: "HLT",
-         INC: "INC", DEC: "DEC", LDX: "LDX", STX: "STX"}
+         INC: "INC", DEC: "DEC", LDX: "LDX", STX: "STX", IN: "IN"}
 
 
 class CPU:
@@ -106,6 +107,11 @@ class CPU:
             self.z = int(self.a == 0)
         elif ir == STX:
             self.mem[self.mem[operand]] = self.a
+        elif ir == IN:
+            if not self.inputs:
+                raise ValueError(f"IN 没有输入数据了 @ pc=0x{pc_before - 1:02X}")
+            self.a = self.inputs.pop(0)
+            self.z = int(self.a == 0)
         elif ir == OUT:
             self.outputs.append(self.a)
         elif ir == HLT:
@@ -139,8 +145,9 @@ def load_hex(path):
     return mem
 
 
-def run(path, max_cycles=1000):
+def run(path, max_cycles=1000, inputs=()):
     cpu = CPU(load_hex(path))
+    cpu.inputs = list(inputs)
     print(f"=== 运行 {path} ===")
     while cpu.step() and cpu.cycles < max_cycles:
         pass
@@ -159,8 +166,12 @@ if __name__ == "__main__":
         target = positional[0]
     if "--expect" in args:
         expect = int(args[args.index("--expect") + 1])
+    inputs = []
+    if "--input" in args:
+        raw = args[args.index("--input") + 1]
+        inputs = [int(x,16) for x in raw.replace(",", " ").split()]
 
-    cpu = run(target)
+    cpu = run(target, inputs=inputs)
     ok = cpu.halted and (expect is None or cpu.a == expect)
     print()
     if expect is not None:
