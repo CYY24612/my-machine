@@ -16,3 +16,7 @@ IO_LOC  "led[4]" 15;
 IO_PORT "led[4]" PULL_MODE=UP DRIVE=8;
 IO_LOC  "led[5]" 16;
 IO_PORT "led[5]" PULL_MODE=UP DRIVE=8;
+
+// 板载 USB-UART（官方 uart 例程确认 pin 17 = TX）
+IO_LOC  "uart_tx" 17;
+IO_PORT "uart_tx" IO_TYPE=LVCMOS33 PULL_MODE=UP DRIVE=8;

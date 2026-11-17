@@ -47,3 +47,8 @@ fpga/**/impl/
 # 下面两个是 fpga/cpu_on_fpga/src/ 的早期副本，已过期，不再跟踪
 01-cpu/rtl/top.v
 01-cpu/constraints/
+# ---- compiled exe ----
+*.exe
+
+# ---- local editor config ----
+02-car/.vscode/
