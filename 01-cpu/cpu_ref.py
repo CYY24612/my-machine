@@ -26,11 +26,16 @@ LDI = 0x05
 JMP = 0x06
 JZ  = 0x07
 OUT = 0x08
+INC = 0x09
+DEC = 0x0A
+LDX = 0x0B
+STX = 0x0C
 HLT = 0x0F
 
-HAS_OPERAND = {LDA, STA, ADD, SUB, LDI, JMP, JZ}
+HAS_OPERAND = {LDA, STA, ADD, SUB, LDI, JMP, JZ, LDX, STX}
 NAMES = {NOP: "NOP", LDA: "LDA", STA: "STA", ADD: "ADD", SUB: "SUB",
-         LDI: "LDI", JMP: "JMP", JZ: "JZ", OUT: "OUT", HLT: "HLT"}
+         LDI: "LDI", JMP: "JMP", JZ: "JZ", OUT: "OUT", HLT: "HLT",
+         INC: "INC", DEC: "DEC", LDX: "LDX", STX: "STX"}
 
 
 class CPU:
@@ -90,6 +95,17 @@ class CPU:
         elif ir == JZ:
             if self.z:
                 self.pc = operand
+        elif ir == INC:
+            self.a = (self.a + 1) & 0xFF
+            self.z = int(self.a == 0)
+        elif ir == DEC:
+            self.a = (self.a - 1) & 0xFF
+            self.z = int(self.a == 0)
+        elif ir == LDX:
+            self.a = self.mem[self.mem[operand]]
+            self.z = int(self.a == 0)
+        elif ir == STX:
+            self.mem[self.mem[operand]] = self.a
         elif ir == OUT:
             self.outputs.append(self.a)
         elif ir == HLT:

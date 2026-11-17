@@ -4,7 +4,7 @@
 set -uo pipefail
 cd "$(dirname "$0")"
 
-TESTS="add:8 sum10:55 mul:42"
+TESTS="add:8 sum10:55 mul:42 array_sum:15 array_fill:9"
 fail=0
 pass=0
 

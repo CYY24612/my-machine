@@ -25,7 +25,8 @@ module cpu (
     // ---- 指令编码 ----
     localparam OP_NOP = 8'h00, OP_LDA = 8'h01, OP_STA = 8'h02, OP_ADD = 8'h03,
                OP_SUB = 8'h04, OP_LDI = 8'h05, OP_JMP = 8'h06, OP_JZ  = 8'h07,
-               OP_OUT = 8'h08, OP_HLT = 8'h0F;
+               OP_OUT = 8'h08, OP_HLT = 8'h0F,
+               OP_INC = 8'h09, OP_DEC = 8'h0A, OP_LDX = 8'h0B, OP_STX = 8'h0C;
 
     // ---- 状态 ----
     localparam S_FETCH = 2'd0, S_EXEC = 2'd1, S_EXEC2 = 2'd2, S_STOP = 2'd3;
@@ -83,6 +84,16 @@ module cpu (
                                      halted <= 1'b1;
                                      state  <= S_STOP;
                                  end
+                        OP_INC:  begin
+                                     a <= a + 8'd1;
+                                     z <= ((a + 8'd1) == 8'h00);
+                                     state <= S_FETCH;
+                                 end
+                        OP_DEC:  begin
+                                     a <= a - 8'd1;
+                                     z <= ((a - 8'd1) == 8'h00);
+                                     state <= S_FETCH;
+                                 end
                         default: begin              // 带操作数的指令
                                      tmp   <= mem[pc];
                                      pc    <= pc + 8'd1;
@@ -111,6 +122,11 @@ module cpu (
                                     a <= a - mem[tmp];
                                     z <= ((a - mem[tmp]) == 8'h00);
                                 end
+                        OP_LDX: begin                       // 间接读：A = mem[mem[tmp]]
+                                    a <= mem[mem[tmp]];
+                                    z <= (mem[mem[tmp]] == 8'h00);
+                                end
+                        OP_STX: mem[mem[tmp]] <= a;         // 间接写
                         OP_JMP: pc <= tmp;
                         OP_JZ:  if (z) pc <= tmp;
                         default: ;                 // 非法指令：当 NOP

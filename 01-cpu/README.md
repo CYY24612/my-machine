@@ -253,3 +253,43 @@ TESTS="add:8 sum10:55 xxx:期望值"
 见 [[长期目标 · 我的机器]] 的**脑线**，对应交汇点 ②（我的 CPU，能算加法）。
 
 **它是"电脑到底怎么组成的"这个问题的第一个答案**：你现在有一台（在模型里）能执行程序的机器，而且每一拍你都知道它在干什么。
+
+---
+
+## 14 条指令（2026-11-17 新增 4 条）
+
+| 指令 | 编码 | 拍数 | 语义 | 用途 |
+| --- | --- | ---: | --- | --- |
+| NOP | 0x00 | 2 | 空操作 | — |
+| LDA addr | 0x01 | 3 | `A = mem[addr]` | 直接读 |
+| STA addr | 0x02 | 3 | `mem[addr] = A` | 直接写 |
+| ADD addr | 0x03 | 3 | `A += mem[addr]` | — |
+| SUB addr | 0x04 | 3 | `A -= mem[addr]` | — |
+| LDI imm | 0x05 | 3 | `A = imm` | 立即数 |
+| JMP addr | 0x06 | 3 | `PC = addr` | 无条件跳 |
+| JZ addr | 0x07 | 3 | `if Z: PC = addr` | 条件跳 |
+| OUT | 0x08 | 2 | 输出 A | — |
+| **INC** | 0x09 | **2** | `A += 1`（更新 Z） | 指针/计数器 +1 |
+| **DEC** | 0x0A | **2** | `A -= 1`（更新 Z） | 指针/计数器 -1 |
+| **LDX addr** | 0x0B | **3** | `A = mem[mem[addr]]` | **间接读（数组/指针）** |
+| **STX addr** | 0x0C | **3** | `mem[mem[addr]] = A` | **间接写** |
+| HLT | 0x0F | 2 | 停机 | — |
+
+### 新增两个测试程序
+
+| 程序 | 测什么 | 期望 A | 拍数 |
+| --- | --- | ---: | ---: |
+| `array_sum` | 用 **LDX** 遍历数组求和（1+2+3+4+5） | **15** | 178 |
+| `array_fill` | 用 **STX** 批量写入 9，再读回验证 | **9** | 135 |
+
+```bash
+python tools/asm.py programs/array_sum.asm -o programs/array_sum.hex -l programs/array_sum.lst
+python cpu_ref.py programs/array_sum.hex --expect 15
+```
+
+### 汇编器的两道自检（防静默失败）
+
+| 检查 | 触发条件 | 为什么要 |
+| --- | --- | --- |
+| **hex 内容检查** | 出现非 `xx` / `@xxxx` 的行 | Gowin `$readmemh` 遇到注释**静默失败** |
+| **地址重叠检查** | `ORG` 回头覆盖已生成的字节 | 数据压到代码上 → 跑飞（本次实测踩到） |

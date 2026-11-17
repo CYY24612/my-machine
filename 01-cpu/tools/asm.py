@@ -26,8 +26,9 @@ import sys
 OPCODES = {
     "NOP": 0x00, "LDA": 0x01, "STA": 0x02, "ADD": 0x03, "SUB": 0x04,
     "LDI": 0x05, "JMP": 0x06, "JZ": 0x07, "OUT": 0x08, "HLT": 0x0F,
+    "INC": 0x09, "DEC": 0x0A, "LDX": 0x0B, "STX": 0x0C,
 }
-HAS_OPERAND = {"LDA", "STA", "ADD", "SUB", "LDI", "JMP", "JZ"}
+HAS_OPERAND = {"LDA", "STA", "ADD", "SUB", "LDI", "JMP", "JZ", "LDX", "STX"}
 
 
 class AsmError(Exception):
@@ -122,7 +123,22 @@ def emit(labels, layout):
     return out
 
 
+def check_overlap(items):
+    """检测代码与数据地址重叠（ORG 回头覆盖已生成的字节）。"""
+    end = 0
+    for addr, data, text in items:
+        if not data:
+            continue
+        if addr < end:
+            raise AsmError(
+                f"地址重叠：'{text}' 从 0x{addr:02x} 开始，"
+                f"但前面已经用到了 0x{end-1:02x}。把 ORG 改大一点"
+            )
+        end = addr + len(data)
+
+
 def write_hex(path, items):
+    """写 .hex。**绝不写任何注释** —— Gowin 的 $readmemh 遇到 // 会静默失败。"""
     lines = []
     expected = 0
     for addr, data, _ in items:
@@ -133,8 +149,30 @@ def write_hex(path, items):
         for b in data:
             lines.append(f"{b:02x}")
         expected = addr + len(data)
+    body = "\n".join(lines) + "\n"
     with open(path, "w", encoding="utf-8", newline="\n") as f:
-        f.write("\n".join(lines) + "\n")
+        f.write(body)
+    validate_hex(path)
+
+
+def validate_hex(path):
+    """读回校验：只允许 `xx`（两位十六进制）或 `@xxxx`（地址跳转）。
+
+    这条自检是为了防 Gowin 综合的静默失败：
+      readmemh 失败 → mem 全 0 → CPU 狂跑 NOP → 上板 LED 乱亮
+    """
+    ok_byte = re.compile(r"^[0-9a-fA-F]{2}$")
+    ok_addr = re.compile(r"^@[0-9a-fA-F]{4}$")
+    with open(path, "r", encoding="utf-8") as f:
+        for lineno, raw in enumerate(f, 1):
+            line = raw.strip()
+            if not line:
+                continue
+            if not (ok_byte.match(line) or ok_addr.match(line)):
+                raise AsmError(
+                    f"{path}:{lineno} 出现了非法行 {line!r}。"
+                    f"hex 里只能有两位十六进制或 @地址（不能有注释）"
+                )
 
 
 def write_listing(path, items, src):
@@ -168,6 +206,7 @@ def main(argv):
     labels, layout = pass1(lines)
     items = emit(labels, layout)
 
+    check_overlap(items)
     write_hex(out_hex, items)
     if out_lst:
         write_listing(out_lst, items, src)

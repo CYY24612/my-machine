@@ -19,6 +19,10 @@
 | JMP a | 0x06 | addr | PC = addr | 3 |
 | JZ a | 0x07 | addr | if Z: PC = addr else PC = PC+1 | 3 |
 | OUT | 0x08 | — | 输出 A 到 out_data，out_valid 拉高一拍 | 2 |
+| **INC** | 0x09 | — | `A = A + 1`；Z 更新 | **2** |
+| **DEC** | 0x0A | — | `A = A - 1`；Z 更新 | **2** |
+| **LDX** | 0x0B | addr | **间接读**：`A = mem[mem[addr]]`；Z 更新 | **3** |
+| **STX** | 0x0C | addr | **间接写**：`mem[mem[addr]] = A` | **3** |
 | HLT | 0x0F | — | 停机（halted=1） | 2 |
 
 ## 状态机（RTL 用）
@@ -49,3 +53,33 @@ S_STOP:   halted 后停在这里
 ```
 
 期望：**OUT 输出 8，停机时 A = 8**。
+
+---
+
+## 间接寻址（LDX / STX）说明
+
+`LDX ptr` 里的 `ptr` 是**一个地址**，那个地址里存的是**目标地址**：
+
+```asm
+ptr:    DB 0x30          ; ptr 里存着 0x30
+...
+        LDX ptr          ; 先读 mem[ptr] = 0x30，再读 mem[0x30]
+```
+
+**不是 6502 的 X 寄存器**，是"用变量当地址"（指针）。
+
+**典型用途**：数组遍历
+
+```asm
+        LDI arr          ; A = 数组首地址
+        STA ptr          ; ptr = 首地址
+loop:
+        LDX ptr          ; A = 当前元素
+        ...
+        LDA ptr
+        INC              ; 指针 +1
+        STA ptr
+```
+
+> ⚠️ **综合注意**：`mem[mem[tmp]]` 是嵌套索引，仿真没问题，但部分综合器不喜欢。
+> 若 Gowin 报错，改成先读地址到 `tmp2` 再访存（多一拍），语义不变。
