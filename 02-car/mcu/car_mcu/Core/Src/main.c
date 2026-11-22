@@ -48,6 +48,9 @@
 static const uint8_t kDummy[8] = { 0xAA, 0x55, 0x06, 0x81, 0x01, 0x0E, 0x03, 0x00 };
 volatile uint8_t g_tick_100ms= 0;
 uint8_t g_rx2 = 0;
+
+uint16_t g_servo_ang = 0;
+uint8_t g_servo_dir = 1;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -93,10 +96,14 @@ int main(void)
   MX_TIM2_Init();
   MX_USART1_UART_Init();
   MX_USART2_UART_Init();
+  MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
   HAL_TIM_Base_Start_IT(&htim2);
   HAL_UART_Receive_IT(&huart2, &g_rx2, 1);
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
+  
+  HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_4);
+  __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_4, 1500);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -158,17 +165,31 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
     if (htim->Instance == TIM2) {
         g_tick_100ms = 1;
+		
+		// if (g_servo_dir) {
+		// 	g_servo_ang += 5;
+		// 	if (g_servo_ang >= 180) { g_servo_ang = 180; g_servo_dir = 0; }
+		// } else {
+		// 	if (g_servo_ang >= 5) g_servo_ang -=5;
+		// 	else 				  g_servo_ang = 0;
+		// 	if (g_servo_ang == 0) g_servo_dir = 1;
+		// }
+		// __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_4, 500 + (g_servo_ang * 2000) / 180);
     }
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
     if (huart->Instance == USART2) {
-      if (g_rx2 == 'H') {
-          HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
-      } else if (g_rx2 == 'L') {
-          HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
-      }
+      static uint8_t n = 0;
+
+      uint32_t ang = g_rx2;
+      if (ang > 180) ang = 180;
+      __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_4, 500 + (ang * 2000) / 180);
+
+      if (++n >= 20) { n = 0; HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13); }
+      
+      g_rx2 = 0;
       HAL_UART_Receive_IT(&huart2, &g_rx2, 1);
     }
 }

@@ -1,0 +1,41 @@
+ADDR  BYTES        SOURCE
+----  -----------  ----------------------------------
+0000               ORG 0
+0000  05 00        LDI 0
+0002  02 f0        STA 0xF0
+0004  02 f1        STA 0xF1
+0006  05 b5        LDI 181
+0008  02 f3        STA 0xF3
+000a  01 f0        LDA 0xF0
+000c  08           OUT
+000d  05 ff        LDI 255
+000f  02 f2        STA 0xF2
+0011  05 ff        LDI 255
+0013  0a           DEC
+0014  07 18        JZ  d_inner_done
+0016  06 13        JMP d_inner
+0018  01 f2        LDA 0xF2
+001a  0a           DEC
+001b  07 1f        JZ  d_outer_done
+001d  06 0f        JMP d_outer
+001f  01 f1        LDA 0xF1
+0021  07 32        JZ  step_up
+0023  01 f0        LDA 0xF0
+0025  0a           DEC
+0026  02 f0        STA 0xF0
+0028  07 2c        JZ  at_zero
+002a  06 0a        JMP main
+002c  05 00        LDI 0
+002e  02 f1        STA 0xF1
+0030  06 0a        JMP main
+0032  01 f0        LDA 0xF0
+0034  09           INC
+0035  02 f0        STA 0xF0
+0037  04 f3        SUB 0xF3
+0039  07 3d        JZ  at_max
+003b  06 0a        JMP main
+003d  05 b4        LDI 180
+003f  02 f0        STA 0xF0
+0041  05 01        LDI 1
+0043  02 f1        STA 0xF1
+0045  06 0a        JMP main
