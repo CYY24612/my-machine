@@ -273,6 +273,8 @@ TESTS="add:8 sum10:55 xxx:期望值"
 | **DEC** | 0x0A | **2** | `A -= 1`（更新 Z） | 指针/计数器 -1 |
 | **LDX addr** | 0x0B | **3** | `A = mem[mem[addr]]` | **间接读（数组/指针）** |
 | **STX addr** | 0x0C | **3** | `mem[mem[addr]] = A` | **间接写** |
+| **IN** | 0x0D | **2+等待** | `A = in_data`（等 in_valid），发 in_ack | 从串口读 |
+| **JMPX addr** | 0x0E | **3** | `PC = mem[addr]` | **间接跳（函数指针）** |
 | HLT | 0x0F | 2 | 停机 | — |
 
 ### 新增两个测试程序

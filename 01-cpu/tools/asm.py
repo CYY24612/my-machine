@@ -26,9 +26,9 @@ import sys
 OPCODES = {
     "NOP": 0x00, "LDA": 0x01, "STA": 0x02, "ADD": 0x03, "SUB": 0x04,
     "LDI": 0x05, "JMP": 0x06, "JZ": 0x07, "OUT": 0x08, "HLT": 0x0F,
-    "INC": 0x09, "DEC": 0x0A, "LDX": 0x0B, "STX": 0x0C, "IN": 0x0D,
+    "INC": 0x09, "DEC": 0x0A, "LDX": 0x0B, "STX": 0x0C, "IN": 0x0D, "JMPX": 0x0E,
 }
-HAS_OPERAND = {"LDA", "STA", "ADD", "SUB", "LDI", "JMP", "JZ", "LDX", "STX"}
+HAS_OPERAND = {"LDA", "STA", "ADD", "SUB", "LDI", "JMP", "JZ", "LDX", "STX", "JMPX"}
 
 
 class AsmError(Exception):

@@ -1,0 +1,20 @@
+ADDR  BYTES        SOURCE
+----  -----------  ----------------------------------
+0000  05 80        LDI 0x80
+0002  02 60        STA ptr
+0004  02 61        STA entry
+0006  05 ff        LDI 0xFF
+0008  02 62        STA term
+000a  0d           IN
+000b  0c 60        STX ptr
+000d  04 62        SUB term
+000f  07 18        JZ  run
+0011  01 60        LDA ptr
+0013  09           INC
+0014  02 60        STA ptr
+0016  06 0a        JMP recv
+0018  0e 61        JMPX entry
+0060               ORG 0x60
+0060  00           DB 0
+0061  00           DB 0
+0062  00           DB 0
