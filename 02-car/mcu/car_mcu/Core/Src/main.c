@@ -47,6 +47,8 @@
 /* USER CODE BEGIN PV */
 static const uint8_t kDummy[8] = { 0xAA, 0x55, 0x06, 0x81, 0x01, 0x0E, 0x03, 0x00 };
 volatile uint8_t g_tick_100ms= 0;
+volatile uint8_t g_loss_cnt = 0;
+
 uint8_t g_rx2 = 0;
 
 uint16_t g_servo_ang = 0;
@@ -163,19 +165,17 @@ void SystemClock_Config(void)
 /* USER CODE BEGIN 4 */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-    if (htim->Instance == TIM2) {
-        g_tick_100ms = 1;
-		
-		// if (g_servo_dir) {
-		// 	g_servo_ang += 5;
-		// 	if (g_servo_ang >= 180) { g_servo_ang = 180; g_servo_dir = 0; }
-		// } else {
-		// 	if (g_servo_ang >= 5) g_servo_ang -=5;
-		// 	else 				  g_servo_ang = 0;
-		// 	if (g_servo_ang == 0) g_servo_dir = 1;
-		// }
-		// __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_4, 500 + (g_servo_ang * 2000) / 180);
+  if (htim->Instance == TIM2) {
+    g_tick_100ms = 1;
+  
+    /* ---- 失联保护：300ms 没收到新角度就关脉宽 ---- */
+    if (g_loss_cnt < 255) {
+      g_loss_cnt++;
+    } 
+    if (g_loss_cnt >= 3) {
+      __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_4, 0);
     }
+  }
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
@@ -183,6 +183,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     if (huart->Instance == USART2) {
       static uint8_t n = 0;
 
+      g_loss_cnt = 0;
       uint32_t ang = g_rx2;
       if (ang > 180) ang = 180;
       __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_4, 500 + (ang * 2000) / 180);
