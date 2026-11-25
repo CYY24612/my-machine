@@ -56,6 +56,12 @@ uint8_t g_tx_cnt = 0;
 volatile uint32_t g_dist_cm = 0;
 volatile uint32_t g_raw_us = 0;
 
+/* ---- 距离滤波：最近 3 次有效值 + 中值 ---- */
+uint16_t g_dbuf[3] = { 0, 0, 0 };
+uint8_t  g_didx = 0;
+uint8_t  g_dcount = 0;
+int16_t  g_last_sent = -100;        /* 上次发给 CPU 的距离，-100 = 还没发过 */
+
 uint16_t g_servo_ang = 0;
 uint8_t g_servo_dir = 1;
 /* USER CODE END PV */
@@ -68,6 +74,16 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+/* 三个数取中值：天然抗离群值（比平均值好，不会被单个坏值带偏） */
+static uint16_t median3(uint16_t a, uint16_t b, uint16_t c)
+{
+    if ((a <= b) && (b <= c)) return b;
+    if ((c <= b) && (b <= a)) return b;
+    if ((b <= a) && (a <= c)) return a;
+    if ((c <= a) && (a <= b)) return a;
+    return c;
+}
 static uint32_t hcsr04_read_cm(void)
 {
     uint32_t t0, t1;
@@ -150,20 +166,42 @@ int main(void)
     if (g_tick_100ms) {
         g_tick_100ms = 0;
 
+        /* ---- 1. 测距 ---- */
         g_dist_cm = hcsr04_read_cm();
 
-        char buf[32];
-        int n = snprintf(buf, sizeof(buf), "dist=%lu cm  w=%luus  echo=%d\r\n",
-                        (unsigned long)g_dist_cm,
-                        (unsigned long)g_raw_us,
-                        (int)HAL_GPIO_ReadPin(ECHO_GPIO_Port, ECHO_Pin));
+        /* ---- 2. 调试输出（原始值）---- */
+        char buf[40];
+        int n = snprintf(buf, sizeof(buf), "d=%lu w=%lu\r\n",
+                         (unsigned long)g_dist_cm,
+                         (unsigned long)g_raw_us);
         if (n > 0) HAL_UART_Transmit(&huart1, (uint8_t *)buf, n, 100);
 
-        uint8_t d = (g_dist_cm > 180) ? 180 : (uint8_t)g_dist_cm;   /* 限幅到 180，CPU 用 180-距离 算角度 */
-        HAL_UART_Transmit(&huart2, &d, 1, 10);
+        /* ---- 3. 只处理有效测量（失败就不发，舵机保持原位）---- */
+        if (g_dist_cm < 999) {
+
+            /* 3.1 进环形缓冲 */
+            g_dbuf[g_didx] = (uint16_t)g_dist_cm;
+            g_didx = (uint8_t)((g_didx + 1) % 3);
+            if (g_dcount < 3) g_dcount++;
+
+            /* 3.2 攒满 3 个取中值 */
+            if (g_dcount >= 3) {
+                uint16_t med = median3(g_dbuf[0], g_dbuf[1], g_dbuf[2]);
+                uint8_t  d   = (med > 180) ? 180 : (uint8_t)med;
+
+                /* 3.3 死区：变化 >= 3cm 才发，减少抖动 */
+                int16_t diff = (int16_t)d - g_last_sent;
+                if (diff < 0) diff = (int16_t)(-diff);
+
+                if (g_last_sent < 0 || diff >= 3) {
+                    g_last_sent = (int16_t)d;
+                    HAL_UART_Transmit(&huart2, &d, 1, 10);
+                }
+            }
+        }
     }
   }
-  /* USER CODE END 3 */
+    /* USER CODE END 3 */
 }
 
 /**
@@ -215,7 +253,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     if (g_loss_cnt < 255) {
       g_loss_cnt++;
     } 
-    if (g_loss_cnt >= 3) {
+    if (g_loss_cnt >= 20)   /* 2 秒（有死区，故意不发是正常的） */ {
       __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_4, 0);
     }
   }

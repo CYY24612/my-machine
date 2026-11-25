@@ -54,3 +54,8 @@ fpga/**/impl/
 
 # ---- Gowin per-user settings (auto-generated) ----
 fpga/**/*.gprj.user
+
+# ---- 本地临时对照版本 ----
+*.with-filter
+*.bak-*
+*.with-*
