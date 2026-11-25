@@ -52,6 +52,9 @@ volatile uint8_t g_loss_cnt = 0;
 uint8_t g_rx2 = 0;
 uint8_t g_tx_cnt = 0;
 
+volatile uint32_t g_dist_cm = 0;
+volatile uint32_t g_raw_us = 0;
+
 uint16_t g_servo_ang = 0;
 uint8_t g_servo_dir = 1;
 /* USER CODE END PV */
@@ -64,7 +67,31 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+static uint32_t hcsr04_read_cm(void)
+{
+    uint32_t t0, t1;
 
+    HAL_GPIO_WritePin(TRIG_GPIO_Port, TRIG_Pin, GPIO_PIN_SET);
+    t0 = __HAL_TIM_GET_COUNTER(&htim3);
+    while (__HAL_TIM_GET_COUNTER(&htim3) - t0 < 15) {
+        /* 等待 10us */
+    }
+    HAL_GPIO_WritePin(TRIG_GPIO_Port, TRIG_Pin, GPIO_PIN_RESET);
+
+    t0 = __HAL_TIM_GET_COUNTER(&htim3);
+    while (HAL_GPIO_ReadPin(ECHO_GPIO_Port, ECHO_Pin) == GPIO_PIN_RESET) {
+        if ((__HAL_TIM_GET_COUNTER(&htim3) - t0) > 5000) return 999;
+    }
+
+    t0 = __HAL_TIM_GET_COUNTER(&htim3);
+    while (HAL_GPIO_ReadPin(ECHO_GPIO_Port, ECHO_Pin) == GPIO_PIN_SET) {
+        if ((__HAL_TIM_GET_COUNTER(&htim3) - t0) > 30000) return 998;
+    }
+
+    t1 = __HAL_TIM_GET_COUNTER(&htim3);
+    g_raw_us = t1 - t0;
+    return g_raw_us / 58;  /* cm */
+}
 /* USER CODE END 0 */
 
 /**
@@ -100,6 +127,7 @@ int main(void)
   MX_USART1_UART_Init();
   MX_USART2_UART_Init();
   MX_TIM4_Init();
+  MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
   HAL_TIM_Base_Start_IT(&htim2);
   HAL_UART_Receive_IT(&huart2, &g_rx2, 1);
@@ -107,6 +135,8 @@ int main(void)
   
   HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_4);
   __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_4, 1500);
+
+  HAL_TIM_Base_Start(&htim3);  /* 用于测距的定时器 */
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -118,9 +148,18 @@ int main(void)
     /* USER CODE BEGIN 3 */
     if (g_tick_100ms) {
         g_tick_100ms = 0;
-        g_tx_cnt = (g_tx_cnt + 1) & 0x3F;                  /* 0..63 */
-        HAL_UART_Transmit(&huart2, &g_tx_cnt, 1, 10);      /* 发给 FPGA 的 CPU */
-        HAL_UART_Transmit(&huart1, (uint8_t *)kDummy, sizeof(kDummy), 100);  /* 原来的 STATUS 帧，留作心跳 */
+
+        g_dist_cm = hcsr04_read_cm();
+
+        char buf[32];
+        int n = snprintf(buf, sizeof(buf), "dist=%lu cm  w=%luus  echo=%d\r\n",
+                        (unsigned long)g_dist_cm,
+                        (unsigned long)g_raw_us,
+                        (int)HAL_GPIO_ReadPin(ECHO_GPIO_Port, ECHO_Pin));
+        if (n > 0) HAL_UART_Transmit(&huart1, (uint8_t *)buf, n, 100);
+
+        uint8_t d = (g_dist_cm > 255) ? 255 : g_dist_cm;
+        HAL_UART_Transmit(&huart2, &d, 1, 10);
     }
   }
   /* USER CODE END 3 */
