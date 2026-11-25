@@ -1,0 +1,14 @@
+ADDR  BYTES        SOURCE
+----  -----------  ----------------------------------
+0000  05 40        LDI 0x40
+0002  02 60        STA entry
+0004  0e 60        JMPX entry
+0006  05 ee        LDI 0xEE
+0008  08           OUT
+0009  0f           HLT
+0040               ORG 0x40
+0040  05 2a        LDI 42
+0042  08           OUT
+0043  0f           HLT
+0060               ORG 0x60
+0060  00           DB 0

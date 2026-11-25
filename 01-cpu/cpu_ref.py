@@ -31,12 +31,13 @@ DEC = 0x0A
 LDX = 0x0B
 STX = 0x0C
 IN  = 0x0D
+JMPX = 0x0E
 HLT = 0x0F
 
-HAS_OPERAND = {LDA, STA, ADD, SUB, LDI, JMP, JZ, LDX, STX}
+HAS_OPERAND = {LDA, STA, ADD, SUB, LDI, JMP, JZ, LDX, STX, JMPX}
 NAMES = {NOP: "NOP", LDA: "LDA", STA: "STA", ADD: "ADD", SUB: "SUB",
          LDI: "LDI", JMP: "JMP", JZ: "JZ", OUT: "OUT", HLT: "HLT",
-         INC: "INC", DEC: "DEC", LDX: "LDX", STX: "STX", IN: "IN"}
+         INC: "INC", DEC: "DEC", LDX: "LDX", STX: "STX", IN: "IN", JMPX: "JMPX"}
 
 
 class CPU:
@@ -112,6 +113,8 @@ class CPU:
                 raise ValueError(f"IN 没有输入数据了 @ pc=0x{pc_before - 1:02X}")
             self.a = self.inputs.pop(0)
             self.z = int(self.a == 0)
+        elif ir == JMPX:
+            self.pc = self.mem[operand]
         elif ir == OUT:
             self.outputs.append(self.a)
         elif ir == HLT:

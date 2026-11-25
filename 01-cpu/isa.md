@@ -24,6 +24,8 @@
 | **DEC** | 0x0A | —     | `A = A - 1`；Z 更新                            | **2** |
 | **LDX** | 0x0B | addr   | **间接读**：`A = mem[mem[addr]]`；Z 更新 | **3** |
 | **STX** | 0x0C | addr   | **间接写**：`mem[mem[addr]] = A`         | **3** |
+| **IN** | 0x0D | —     | `A = in_data`（等 `in_valid`），并发 `in_ack` 脉冲 | **2 + 等待** |
+| **JMPX** | 0x0E | addr | **间接跳**：`PC = mem[addr]`（函数指针） | **3** |
 | HLT           | 0x0F | —     | 停机（halted=1）                                 | 2           |
 
 ## 状态机（RTL 用）

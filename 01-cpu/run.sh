@@ -7,7 +7,7 @@
 set -uo pipefail
 cd "$(dirname "$0")"
 
-TESTS="add:8 sum10:55 mul:42 array_sum:15 array_fill:9"
+TESTS="add:8 sum10:55 mul:42 array_sum:15 array_fill:9 jumpx_test:42"
 fail=0
 pass=0
 
@@ -111,6 +111,46 @@ if command -v iverilog >/dev/null 2>&1; then
             iout=$(vvp cpu_in.vvp)
             echo "$iout" | grep -E 'IN-PASS|IN-FAIL' | sed 's/^/   /'
             if echo "$iout" | grep -q 'IN-PASS'; then pass=$((pass+1)); else fail=$((fail+1)); fi
+        else
+            echo "   编译失败"; fail=$((fail+1))
+        fi
+    else
+        fail=$((fail+1))
+    fi
+fi
+echo ""
+
+# ---------------- 串口回环（CPU 收 → 发）----------------
+echo "=============================================="
+echo " 串口回环：发 ABC，CPU 应原样回 ABC"
+echo "=============================================="
+if command -v iverilog >/dev/null 2>&1; then
+    if asm echo_loop; then
+        cp programs/echo_loop.hex programs/prog.hex
+        if iverilog -o cpu_echo.vvp rtl/cpu.v rtl/uart_rx.v rtl/uart_tx.v rtl/in_buf.v tb/cpu_uart_echo_tb.v; then
+            eout=$(vvp cpu_echo.vvp)
+            echo "$eout" | grep -E 'ECHO PASS|ECHO FAIL' | sed 's/^/   /'
+            if echo "$eout" | grep -q 'ECHO PASS'; then pass=$((pass+1)); else fail=$((fail+1)); fi
+        else
+            echo "   编译失败"; fail=$((fail+1))
+        fi
+    else
+        fail=$((fail+1))
+    fi
+fi
+echo ""
+
+# ---------------- 监控程序（串口装载 → 执行）----------------
+echo "=============================================="
+echo " 监控程序：串口送 05 2A 08 0F FF，应执行并回 0x2A"
+echo "=============================================="
+if command -v iverilog >/dev/null 2>&1; then
+    if asm monitor; then
+        cp programs/monitor.hex programs/prog.hex
+        if iverilog -o cpu_mon.vvp rtl/cpu.v rtl/uart_rx.v rtl/uart_tx.v rtl/in_buf.v tb/monitor_tb.v; then
+            mout=$(vvp cpu_mon.vvp)
+            echo "$mout" | grep -E 'MONITOR PASS|MONITOR FAIL' | sed 's/^/   /'
+            if echo "$mout" | grep -q 'MONITOR PASS'; then pass=$((pass+1)); else fail=$((fail+1)); fi
         else
             echo "   编译失败"; fail=$((fail+1))
         fi

@@ -31,7 +31,7 @@ module cpu (
                OP_SUB = 8'h04, OP_LDI = 8'h05, OP_JMP = 8'h06, OP_JZ  = 8'h07,
                OP_OUT = 8'h08, OP_HLT = 8'h0F,
                OP_INC = 8'h09, OP_DEC = 8'h0A, OP_LDX = 8'h0B, OP_STX = 8'h0C,
-               OP_IN = 8'h0D;
+               OP_IN = 8'h0D, OP_JMPX = 8'h0E;
 
     // ---- 状态 ----
     localparam S_FETCH = 2'd0, S_EXEC = 2'd1, S_EXEC2 = 2'd2, S_STOP = 2'd3;
@@ -140,6 +140,7 @@ module cpu (
                                     z <= (mem[mem[tmp]] == 8'h00);
                                 end
                         OP_STX: mem[mem[tmp]] <= a;         // 间接写
+                        OP_JMPX: pc <= mem[tmp];     // 间接跳：PC = mem[操作数]
                         OP_JMP: pc <= tmp;
                         OP_JZ:  if (z) pc <= tmp;
                         default: ;                 // 非法指令：当 NOP
