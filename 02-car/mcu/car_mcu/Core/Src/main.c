@@ -24,6 +24,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <stdio.h>
 
 /* USER CODE END Includes */
 
@@ -158,7 +159,7 @@ int main(void)
                         (int)HAL_GPIO_ReadPin(ECHO_GPIO_Port, ECHO_Pin));
         if (n > 0) HAL_UART_Transmit(&huart1, (uint8_t *)buf, n, 100);
 
-        uint8_t d = (g_dist_cm > 255) ? 255 : g_dist_cm;
+        uint8_t d = (g_dist_cm > 180) ? 180 : (uint8_t)g_dist_cm;   /* 限幅到 180，CPU 用 180-距离 算角度 */
         HAL_UART_Transmit(&huart2, &d, 1, 10);
     }
   }
