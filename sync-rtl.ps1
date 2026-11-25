@@ -9,7 +9,9 @@ $root = $PSScriptRoot
 
 $pairs = @(
     @{ src = '01-cpu\rtl\cpu.v';     dst = 'fpga\cpu_on_fpga\src\cpu.v' },
-    @{ src = '01-cpu\rtl\uart_tx.v'; dst = 'fpga\cpu_on_fpga\src\uart_tx.v' }
+    @{ src = '01-cpu\rtl\uart_tx.v'; dst = 'fpga\cpu_on_fpga\src\uart_tx.v' },
+    @{ src = '01-cpu\rtl\uart_rx.v'; dst = 'fpga\cpu_on_fpga\src\uart_rx.v' },
+    @{ src = '01-cpu\rtl\in_buf.v';    dst = 'fpga\cpu_on_fpga\src\in_buf.v' }
 )
 
 $changed = 0

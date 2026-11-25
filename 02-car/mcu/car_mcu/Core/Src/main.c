@@ -50,6 +50,7 @@ volatile uint8_t g_tick_100ms= 0;
 volatile uint8_t g_loss_cnt = 0;
 
 uint8_t g_rx2 = 0;
+uint8_t g_tx_cnt = 0;
 
 uint16_t g_servo_ang = 0;
 uint8_t g_servo_dir = 1;
@@ -117,7 +118,9 @@ int main(void)
     /* USER CODE BEGIN 3 */
     if (g_tick_100ms) {
         g_tick_100ms = 0;
-        HAL_UART_Transmit(&huart1, (uint8_t *)kDummy, sizeof(kDummy), 100);
+        g_tx_cnt = (g_tx_cnt + 1) & 0x3F;                  /* 0..63 */
+        HAL_UART_Transmit(&huart2, &g_tx_cnt, 1, 10);      /* 发给 FPGA 的 CPU */
+        HAL_UART_Transmit(&huart1, (uint8_t *)kDummy, sizeof(kDummy), 100);  /* 原来的 STATUS 帧，留作心跳 */
     }
   }
   /* USER CODE END 3 */
