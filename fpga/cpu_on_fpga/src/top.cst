@@ -25,3 +25,6 @@ IO_PORT "uart_dbg" IO_TYPE=LVCMOS33 PULL_MODE=UP DRIVE=8;
 // 选 26：官方 7 个例程都没占用 25~30 这组
 IO_LOC  "uart_car" 26;
 IO_PORT "uart_car" IO_TYPE=LVCMOS33 PULL_MODE=UP DRIVE=8;
+
+IO_LOC  "uart_rx_pin" 27;
+IO_PORT "uart_rx_pin" IO_TYPE=LVCMOS33 PULL_MODE=UP;

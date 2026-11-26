@@ -34,7 +34,6 @@ serial-*.log
 02-car/mcu/**/MDK-ARM/*
 !02-car/mcu/**/MDK-ARM/*.uvprojx
 !02-car/mcu/**/MDK-ARM/*.uvoptx
-!02-car/mcu/**/MDK-ARM/*.uvguix*
 !02-car/mcu/**/MDK-ARM/*.s
 
 # ---- Gowin（fpga）：impl/ 全是综合产物 ----
@@ -52,3 +51,11 @@ fpga/**/impl/
 
 # ---- local editor config ----
 02-car/.vscode/
+
+# ---- Gowin per-user settings (auto-generated) ----
+fpga/**/*.gprj.user
+
+# ---- 本地临时对照版本 ----
+*.with-filter
+*.bak-*
+*.with-*
