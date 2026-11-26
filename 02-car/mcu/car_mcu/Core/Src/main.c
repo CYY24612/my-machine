@@ -55,6 +55,7 @@ uint8_t g_tx_cnt = 0;
 
 volatile uint32_t g_dist_cm = 0;
 volatile uint32_t g_raw_us = 0;
+volatile uint8_t  g_angle_last = 90;   /* CPU 最近发来的角度（雷达上报用） */
 
 /* ---- 距离滤波：最近 3 次有效值 + 中值 ---- */
 uint16_t g_dbuf[3] = { 0, 0, 0 };
@@ -171,9 +172,9 @@ int main(void)
 
         /* ---- 2. 调试输出（原始值）---- */
         char buf[40];
-        int n = snprintf(buf, sizeof(buf), "d=%lu w=%lu\r\n",
-                         (unsigned long)g_dist_cm,
-                         (unsigned long)g_raw_us);
+        int n = snprintf(buf, sizeof(buf), "a=%u d=%lu\r\n",
+                         (unsigned)g_angle_last,
+                         (unsigned long)g_dist_cm);
         if (n > 0) HAL_UART_Transmit(&huart1, (uint8_t *)buf, n, 100);
 
         /* ---- 3. 只处理有效测量（失败就不发，舵机保持原位）---- */
@@ -267,6 +268,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
       g_loss_cnt = 0;
       uint32_t ang = g_rx2;
       if (ang > 180) ang = 180;
+      g_angle_last = (uint8_t)ang;          /* 雷达：记下 CPU 当前扫描到的角度 */
       __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_4, 500 + (ang * 2000) / 180);
 
       if (++n >= 20) { n = 0; HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13); }
