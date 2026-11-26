@@ -18,12 +18,17 @@ module top (
     input  wire       sys_clk,       // 27 MHz，pin 52
     input  wire       btn_rst_n,     // 按键，pin 4，按下为 0
     input  wire       uart_rx_pin,   // pin 27 <- 排针 <- STM32 PA2 (USART2_TX)
+    input  wire       uart_rx_pc,
     output wire [5:0] led,           // pin 10/11/13/14/15/16（低电平点亮）
     output wire       uart_dbg,      // pin 17 -> 板载 USB-UART -> 电脑
     output wire       uart_car       // pin 26 -> 排针 -> STM32 PA3 (USART2_RX)
 );
 
     localparam integer CLKS_PER_BIT = 234;   // 27MHz / 115200
+
+    // 数据源选择：1 = 从电脑(pin18)灌程序；0 = 从 STM32(pin27)收超声距离
+    // ⚠️ 改了要重新综合，不是运行时可切
+    localparam integer RX_FROM_PC = 1;
 
     // ---- 复位 ----
     reg [1:0] rst_sync = 2'b11;
@@ -36,24 +41,36 @@ module top (
     wire       out_valid, halted, in_ack, dbg_z;
 
     // ---- 接收链路 ----
-    wire [7:0] rx_byte;
-    wire       rx_valid;
     wire [7:0] in_data_w;
     wire       in_valid_w;
 
-    uart_rx #(.CLKS_PER_BIT(CLKS_PER_BIT)) u_rx (
+    wire [7:0] pc_data; wire pc_valid;
+    wire [7:0] stm_data; wire stm_valid;
+
+    uart_rx #(.CLKS_PER_BIT(CLKS_PER_BIT)) u_rx_pc (
+        .clk      (sys_clk),
+        .rst      (cpu_rst),
+        .rx       (uart_rx_pc),
+        .rx_data  (pc_data),
+        .rx_valid (pc_valid)
+    );
+
+    uart_rx #(.CLKS_PER_BIT(CLKS_PER_BIT)) u_rx_stm (
         .clk      (sys_clk),
         .rst      (cpu_rst),
         .rx       (uart_rx_pin),
-        .rx_data  (rx_byte),
-        .rx_valid (rx_valid)
+        .rx_data  (stm_data),
+        .rx_valid (stm_valid)
     );
+
+    wire [7:0] src_data = RX_FROM_PC ? pc_data : stm_data;
+    wire       src_valid = RX_FROM_PC ? pc_valid : stm_valid;
 
     in_buf u_inbuf (
         .clk       (sys_clk),
         .rst       (cpu_rst),
-        .src_data  (rx_byte),
-        .src_valid (rx_valid),
+        .src_data  (src_data),
+        .src_valid (src_valid),
         .out_data  (in_data_w),
         .out_valid (in_valid_w),
         .out_ack   (in_ack)

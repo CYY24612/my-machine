@@ -177,7 +177,7 @@ int main(void)
         if (n > 0) HAL_UART_Transmit(&huart1, (uint8_t *)buf, n, 100);
 
         /* ---- 3. 只处理有效测量（失败就不发，舵机保持原位）---- */
-        if (g_dist_cm < 999) {
+        if (g_dist_cm < 998) {
 
             /* 3.1 进环形缓冲 */
             g_dbuf[g_didx] = (uint16_t)g_dist_cm;
