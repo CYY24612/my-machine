@@ -37,6 +37,7 @@ matplotlib.rcParams["axes.unicode_minus"] = False
 PORT = sys.argv[1] if len(sys.argv) > 1 else "COM11"
 BAUD = 115200
 MAXD = int(sys.argv[2]) if len(sys.argv) > 2 else 200        # 显示量程 cm
+MIND = int(sys.argv[3]) if len(sys.argv) > 3 else 3          # 小于这个距离算"贴脸"，忽略
 MAXANG = 180
 NBIN = MAXANG + 1                                            # 181 个角度格子
 
@@ -46,6 +47,7 @@ angle_now = 90                   # 最近收到的角度
 dist_now = np.nan                # 最近收到的距离
 n_total = 0                      # 总样本数
 n_bad = 0                        # 无效样本数 (>=998)
+n_near = 0                       # 贴脸样本数 (<MIND, 通常是胶带挡住探头)
 a_min = 999                      # 收到过的角度最小/最大 —— 用来判断扫描是否在动
 a_max = -1
 buf = b""
@@ -53,7 +55,7 @@ buf = b""
 
 def read_serial(s):
     """读走所有可用字节，更新全局状态"""
-    global buf, angle_now, dist_now, n_total, n_bad, a_min, a_max
+    global buf, angle_now, dist_now, n_total, n_bad, n_near, a_min, a_max
     got = []
 
     n = s.in_waiting
@@ -85,6 +87,9 @@ def read_serial(s):
             # 998 = 没收到回声（HC-SR04 会让 Echo 保持高约 38ms，超过我们 30ms 的超时）
             # 失败时【保留该角度上次的有效值】，不清空 —— 雷达图才能累积
             n_bad += 1
+        elif d < MIND:
+            # 小于 MIND 厘米：几乎贴着探头，通常是胶带/支架/传感器自己在反光
+            n_near += 1
         else:
             dist[a] = d if d <= MAXD else np.nan
 
@@ -158,16 +163,19 @@ def main():
             hi = max(a_max, 0)
             rate = (100.0 * (n_total - n_bad) / n_total) if n_total else 0.0
             info.set_text(
-                "角度 %3d°    距离 %-8s   有效点 %3d   样本 %5d   "
-                "有效率 %4.1f%%   角度范围 %3d° ~ %3d°"
-                % (angle_now, dstr, len(ok), n_total, rate, lo, hi)
+                "角度 %3d°   距离 %-8s  有效点 %3d  样本 %5d  有效率 %4.1f%%  "
+                "贴脸 %3d  角度 %3d°~%3d°"
+                % (angle_now, dstr, len(ok), n_total, rate, n_near, lo, hi)
             )
 
             # 诊断提示
+            near_rate = (100.0 * n_near / n_total) if n_total else 0.0
             if n_total == 0:
                 hint.set_text("没有数据：检查串口 / STM32 是否在运行")
             elif hi - lo < 5:
                 hint.set_text("角度几乎不动 → CPU 没有在扫描？查 pin 26 -> PA3 这根线")
+            elif near_rate > 50:
+                hint.set_text("一半以上是 2~3cm 的贴脸读数 → 胶带多半盖住了两个圆探头")
             elif rate < 5:
                 hint.set_text("有效率极低 → 传感器前方没有反光物，或传感器没固定在舵机上")
             elif rate < 40:
