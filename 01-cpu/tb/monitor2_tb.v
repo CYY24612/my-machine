@@ -86,6 +86,8 @@ module monitor2_tb;
         end
     endtask
 
+    integer si, ri;
+
     initial begin
         errors = 0;
 
@@ -103,20 +105,29 @@ module monitor2_tb;
         rst = 1'b0;
         repeat (5) @(posedge clk);
 
-        // 1) 把整段字节流发进去
-        for (i = 0; i < n_frame; i = i + 1)
-            send_byte(fr[1+i]);
-
-        // 2) 收 CPU 的输出并比对
-        for (i = 0; i < n_expect; i = i + 1) begin
-            recv_byte(got);
-            if (got !== ex[1+i]) begin
-                $display("  FAIL[%0d]: 期望 %02h，收到 %02h", i, ex[1+i], got);
-                errors = errors + 1;
-            end else begin
-                $display("  OK  [%0d]: %02h", i, got);
+        // ⚠️ 收发必须并发：
+        //   CPU 处理一帧只要 1.5 µs，而 TB 发完最后一个字节要 87 µs，
+        //   顺序"先发后收"会错过起始位（采样点错位 → 解出乱码）。
+        fork
+            // ---- 1) 发送整段字节流 ----
+            begin
+                for (si = 0; si < n_frame; si = si + 1)
+                    send_byte(fr[1+si]);
             end
-        end
+
+            // ---- 2) 同时等待 CPU 的输出 ----
+            begin
+                for (ri = 0; ri < n_expect; ri = ri + 1) begin
+                    recv_byte(got);
+                    if (got !== ex[1+ri]) begin
+                        $display("  FAIL[%0d]: 期望 %02h，收到 %02h", ri, ex[1+ri], got);
+                        errors = errors + 1;
+                    end else begin
+                        $display("  OK  [%0d]: %02h", ri, got);
+                    end
+                end
+            end
+        join
 
         $display("");
         if (errors == 0) $display("  MONITOR2 PASS");

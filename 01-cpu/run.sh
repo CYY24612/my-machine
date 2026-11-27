@@ -159,6 +159,25 @@ if command -v iverilog >/dev/null 2>&1; then
     fi
 fi
 echo ""
+# ---------------- monitor2（统一帧协议装载器）----------------
+echo "=============================================="
+echo " monitor2：统一帧协议 LOAD + RUN"
+echo "=============================================="
+if command -v iverilog >/dev/null 2>&1; then
+    if asm monitor2; then
+        cp programs/monitor2.hex programs/prog.hex
+        if iverilog -o cpu_m2.vvp rtl/cpu.v rtl/uart_rx.v rtl/uart_tx.v rtl/in_buf.v tb/monitor2_tb.v; then
+            m2out=$(vvp cpu_m2.vvp)
+            echo "$m2out" | grep -E 'OK  |FAIL|MONITOR2' | sed 's/^/   /'
+            if echo "$m2out" | grep -q 'MONITOR2 PASS'; then pass=$((pass+1)); else fail=$((fail+1)); fi
+        else
+            echo "   编译失败"; fail=$((fail+1))
+        fi
+    else
+        fail=$((fail+1))
+    fi
+fi
+echo ""
 echo "=============================================="
 echo " 结果：通过 $pass 个，失败 $fail 个"
 echo "=============================================="

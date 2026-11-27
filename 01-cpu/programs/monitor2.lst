@@ -1,0 +1,75 @@
+ADDR  BYTES        SOURCE
+----  -----------  ----------------------------------
+0000  0d           IN
+0001  04 70        SUB C_AA
+0003  07 07        JZ H1
+0005  06 00        JMP H0
+0007  0d           IN
+0008  04 71        SUB C_55
+000a  07 0e        JZ S2
+000c  06 00        JMP H0
+000e  0d           IN
+000f  02 78        STA TY
+0011  02 7c        STA CK
+0013  0d           IN
+0014  02 79        STA LN
+0016  03 7c        ADD CK
+0018  02 7c        STA CK
+001a  01 79        LDA LN
+001c  02 7a        STA CN
+001e  01 7a        LDA CN
+0020  07 4b        JZ  S5
+0022  0d           IN
+0023  02 7b        STA AD
+0025  03 7c        ADD CK
+0027  02 7c        STA CK
+0029  01 7a        LDA CN
+002b  0a           DEC
+002c  02 7a        STA CN
+002e  07 4b        JZ S5
+0030  0d           IN
+0031  02 7d        STA T0
+0033  03 7c        ADD CK
+0035  02 7c        STA CK
+0037  01 7d        LDA T0
+0039  0c 7b        STX AD
+003b  01 7b        LDA AD
+003d  09           INC
+003e  02 7b        STA AD
+0040  07 00        JZ H0
+0042  01 7a        LDA CN
+0044  0a           DEC
+0045  02 7a        STA CN
+0047  07 4b        JZ S5
+0049  06 30        JMP S4
+004b  0d           IN
+004c  04 7c        SUB CK
+004e  07 52        JZ  S5O
+0050  06 00        JMP H0
+0052  01 78        LDA TY
+0054  04 72        SUB C_TPING
+0056  07 60        JZ  PING
+0058  01 78        LDA TY
+005a  04 73        SUB C_TRUN
+005c  07 65        JZ  RUN
+005e  06 00        JMP H0
+0060  05 a5        LDI 0xA5
+0062  08           OUT
+0063  06 00        JMP H0
+0065  01 7b        LDA AD
+0067  02 7e        STA SLOT
+0069  0e 7e        JMPX SLOT
+0070               ORG 0x70
+0070  aa           DB 0xAA
+0071  55           DB 0x55
+0072  06           DB 0x06
+0073  05           DB 0x05
+0074  a5           DB 0xA5
+0078               ORG 0x78
+0078  00           DB 0
+0079  00           DB 0
+007a  00           DB 0
+007b  00           DB 0
+007c  00           DB 0
+007d  00           DB 0
+007e  00           DB 0
