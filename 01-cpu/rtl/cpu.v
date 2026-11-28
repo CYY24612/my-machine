@@ -31,7 +31,8 @@ module cpu (
                OP_SUB = 8'h04, OP_LDI = 8'h05, OP_JMP = 8'h06, OP_JZ  = 8'h07,
                OP_OUT = 8'h08, OP_HLT = 8'h0F,
                OP_INC = 8'h09, OP_DEC = 8'h0A, OP_LDX = 8'h0B, OP_STX = 8'h0C,
-               OP_IN = 8'h0D, OP_JMPX = 8'h0E;
+               OP_IN = 8'h0D, OP_JMPX = 8'h0E,
+               OP_JC = 8'h10, OP_JNC = 8'h11;
 
     // ---- 状态 ----
     localparam S_FETCH = 2'd0, S_EXEC = 2'd1, S_EXEC2 = 2'd2, S_STOP = 2'd3;
@@ -39,6 +40,7 @@ module cpu (
     reg [7:0] mem [0:255];
     reg [7:0] pc, a, ir, tmp;
     reg       z;
+    reg       c;
     reg [1:0] state;
 
     assign dbg_pc = pc;
@@ -62,6 +64,7 @@ module cpu (
             ir        <= 8'h00;
             tmp       <= 8'h00;
             z         <= 1'b0;
+            c         <= 1'b0;
             state     <= S_FETCH;
             halted    <= 1'b0;
             out_valid <= 1'b0;
@@ -108,9 +111,17 @@ module cpu (
                                      state <= S_FETCH;
                                  end
                         default: begin              // 带操作数的指令
-                                     tmp   <= mem[pc];
-                                     pc    <= pc + 8'd1;
-                                     state <= S_EXEC2;
+                                    case (ir)
+                                        OP_LDA, OP_STA, OP_ADD, OP_SUB,
+                                        OP_LDI, OP_JMP, OP_JZ,
+                                        OP_LDX, OP_STX, OP_JMPX,
+                                        OP_JC, OP_JNC: begin
+                                                tmp <= mem[pc];
+                                                pc <= pc + 8'd1;
+                                                state <= S_EXEC2; 
+                                            end
+                                        default:  state <= S_FETCH;
+                                    endcase
                                  end
                     endcase
                 end
@@ -130,10 +141,12 @@ module cpu (
                         OP_ADD: begin
                                     a <= a + mem[tmp];
                                     z <= ((a + mem[tmp]) == 8'h00);
+                                    c <= (({1'b0, a} + {1'b0, mem[tmp]}) > 9'h0FF);
                                 end
                         OP_SUB: begin
                                     a <= a - mem[tmp];
                                     z <= ((a - mem[tmp]) == 8'h00);
+                                    c <= (a < mem[tmp]);
                                 end
                         OP_LDX: begin                       // 间接读：A = mem[mem[tmp]]
                                     a <= mem[mem[tmp]];
@@ -143,7 +156,9 @@ module cpu (
                         OP_JMPX: pc <= mem[tmp];     // 间接跳：PC = mem[操作数]
                         OP_JMP: pc <= tmp;
                         OP_JZ:  if (z) pc <= tmp;
-                        default: ;                 // 非法指令：当 NOP
+                        OP_JC:  if (c) pc <= tmp;
+                        OP_JNC: if (!c) pc <= tmp;
+                        default: ;
                     endcase
                     state <= S_FETCH;
                 end

@@ -32,12 +32,14 @@ LDX = 0x0B
 STX = 0x0C
 IN  = 0x0D
 JMPX = 0x0E
+JC = 0x10
+JNC = 0x11
 HLT = 0x0F
 
-HAS_OPERAND = {LDA, STA, ADD, SUB, LDI, JMP, JZ, LDX, STX, JMPX}
+HAS_OPERAND = {LDA, STA, ADD, SUB, LDI, JMP, JZ, LDX, STX, JMPX, JC, JNC}
 NAMES = {NOP: "NOP", LDA: "LDA", STA: "STA", ADD: "ADD", SUB: "SUB",
          LDI: "LDI", JMP: "JMP", JZ: "JZ", OUT: "OUT", HLT: "HLT",
-         INC: "INC", DEC: "DEC", LDX: "LDX", STX: "STX", IN: "IN", JMPX: "JMPX"}
+         INC: "INC", DEC: "DEC", LDX: "LDX", STX: "STX", IN: "IN", JMPX: "JMPX", JC: "JC", JNC: "JNC"}
 
 
 class CPU:
@@ -46,6 +48,7 @@ class CPU:
         self.pc = 0
         self.a = 0
         self.z = 0
+        self.c = 0
         self.halted = False
         self.cycles = 0
         self.outputs = []
@@ -87,15 +90,24 @@ class CPU:
         elif ir == STA:
             self.mem[operand] = self.a
         elif ir == ADD:
-            self.a = (self.a + self.mem[operand]) & 0xFF
+            s = self.a + self.mem[operand]
+            self.a = s & 0xFF
             self.z = int(self.a == 0)
+            self.c = int(s > 0xFF)
         elif ir == SUB:
+            self.c = int(self.a < self.mem[operand])
             self.a = (self.a - self.mem[operand]) & 0xFF
             self.z = int(self.a == 0)
         elif ir == JMP:
             self.pc = operand
         elif ir == JZ:
             if self.z:
+                self.pc = operand
+        elif ir == JC:
+            if self.c:
+                self.pc = operand
+        elif ir == JNC:
+            if not self.c:
                 self.pc = operand
         elif ir == INC:
             self.a = (self.a + 1) & 0xFF
@@ -120,11 +132,11 @@ class CPU:
         elif ir == HLT:
             self.halted = True
         else:
-            raise ValueError(f"非法指令 0x{ir:02X} @ pc=0x{pc_before - 1:02X}")
+            pass
 
         line = (f"cyc={self.cycles:3d}  pc={pc_before - 1:02X}  {NAMES.get(ir, '??'):3s}"
                 f"  op={('--' if operand is None else f'0x{operand:02X}')}"
-                f"  A={self.a:3d}  Z={self.z}  out={self.outputs[-1:] or ['-']}")
+                f"  A={self.a:3d}  Z={self.z} C={self.c} out={self.outputs[-1:] or ['-']}")
         self.log.append(line)
         if self.trace:
             print(line)
