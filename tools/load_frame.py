@@ -124,7 +124,15 @@ def main():
         mode = "loadrun"
         desc = "倒计时 %d..1" % int(rest[1])
     else:
-        code = parse_hex_bytes(" ".join(rest))
+        try:
+            code = parse_hex_bytes(" ".join(rest))
+        except ValueError:
+            print("看不懂这些参数: %s" % " ".join(rest))
+            print()
+            print("  想打印文本？   python load_frame.py COM14 --text \"Hi!\"")
+            print("  想发机器码？   python load_frame.py COM14 \"05 2A 08 0F\"")
+            print("  想测链路？     python load_frame.py COM14 --ping")
+            return
         mode = "loadrun"
         desc = "原始机器码"
 
